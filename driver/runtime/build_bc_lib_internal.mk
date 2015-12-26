@@ -18,15 +18,21 @@ ifndef BCC_RS_TRIPLE
 BCC_RS_TRIPLE := $($(LOCAL_2ND_ARCH_VAR_PREFIX)RS_TRIPLE)
 endif
 
+AOSP_LLVM_PREBUILTS_VERSION := 3.6
+AOSP_LLVM_PREBUILTS_PATH := prebuilts/clang/$(BUILD_OS)-x86/host/$(LLVM_PREBUILTS_VERSION)/bin
+AOSP_CLANG := $(AOSP_LLVM_PREBUILTS_PATH)/clang$(BUILD_EXECUTABLE_SUFFIX)
+AOSP_LLVM_LINK := $(AOSP_LLVM_PREBUILTS_PATH)/llvm-link$(BUILD_EXECUTABLE_SUFFIX)
+AOSP_LLVM_AS := $(AOSP_LLVM_PREBUILTS_PATH)/llvm-as$(BUILD_EXECUTABLE_SUFFIX)
+
 # Set these values always by default
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 
 include $(BUILD_SYSTEM)/base_rules.mk
-
+include $(BUILD_SYSTEM)/dragontc.mk
 BCC_STRIP_ATTR := $(BUILD_OUT_EXECUTABLES)/bcc_strip_attr$(BUILD_EXECUTABLE_SUFFIX)
 
-bc_clang := $(CLANG)
+bc_clang := $(AOSP_CLANG)
 ifdef RS_DRIVER_CLANG_EXE
 bc_clang := $(RS_DRIVER_CLANG_EXE)
 endif
@@ -81,9 +87,9 @@ $(c_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.c $(bc_clang)
 	$(hide) $(bc_clang) $(addprefix -I, $(PRIVATE_INCLUDES)) $(PRIVATE_CFLAGS) $< -o $@
 	$(call transform-d-to-p-args,$(@:%.bc=%.d),$(@:%.bc=%.P))
 
-$(ll_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.ll $(LLVM_AS)
+$(ll_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.ll $(AOSP_LLVM_AS)
 	@mkdir -p $(dir $@)
-	$(hide) $(LLVM_AS) $< -o $@
+	$(hide) $(AOSP_LLVM_AS) $< -o $@
 	$(call transform-d-to-p-args,$(@:%.bc=%.d),$(@:%.bc=%.P))
 
 -include $(c_bc_files:%.bc=%.P)
@@ -91,11 +97,11 @@ $(ll_bc_files): $(intermediates)/%.bc: $(LOCAL_PATH)/%.ll $(LLVM_AS)
 
 $(LOCAL_BUILT_MODULE): PRIVATE_BC_FILES := $(c_bc_files) $(ll_bc_files)
 $(LOCAL_BUILT_MODULE): $(c_bc_files) $(ll_bc_files)
-$(LOCAL_BUILT_MODULE): $(LLVM_LINK) $(clcore_LLVM_LD)
-$(LOCAL_BUILT_MODULE): $(LLVM_AS) $(BCC_STRIP_ATTR)
+$(LOCAL_BUILT_MODULE): $(AOSP_LLVM_LINK) $(clcore_LLVM_LD)
+$(LOCAL_BUILT_MODULE): $(AOSP_LLVM_AS) $(BCC_STRIP_ATTR)
 	@echo "bc lib: $(PRIVATE_MODULE) ($@)"
 	@mkdir -p $(dir $@)
-	$(hide) $(LLVM_LINK) $(PRIVATE_BC_FILES) -o $@.unstripped
+	$(hide) $(AOSP_LLVM_LINK) $(PRIVATE_BC_FILES) -o $@.unstripped
 	$(hide) $(BCC_STRIP_ATTR) -o $@ $@.unstripped
 
 BCC_RS_TRIPLE :=
